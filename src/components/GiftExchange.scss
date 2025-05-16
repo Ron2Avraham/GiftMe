@@ -1,22 +1,24 @@
-@import '../styles/variables';
+@import '../styles/_variables.scss';
 
 // Variables
-$primary-color: #FF85A2;    // Soft romantic pink
-$secondary-color: #FFB6C1;  // Light pink
-$accent-color: #FFC0CB;     // Pink
-$text-color: #4A4A4A;       // Soft dark gray
-$white: #ffffff;
-$shadow: 0 4px 6px rgba(255, 133, 162, 0.15);  // Soft pink shadow
+$primary-color: #4a90e2;
+$text-primary: #333333;
+$text-secondary: #666666;
+$background-light: #f5f5f5;
+$border-color: #e0e0e0;
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+$shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
 $transition: all 0.3s ease;
-$success-color: #FF85A2;    // Pink success
-$background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
 
 .gift-exchange {
   width: 100%;
   min-height: 100vh;
   padding: 2rem;
   padding-top: 120px;
-  background: $background-gradient;
+  background: $background-light;
   margin-top: 0;
 
   .exchange-header {
@@ -31,73 +33,112 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
 
     p {
       font-size: 1.2rem;
-      color: $text-color;
+      color: $text-secondary;
     }
   }
 
   .exchange-options {
-    .budget-categories,
-    .gift-categories {
-      margin-bottom: 3rem;
+    padding: 2rem;
+    background: white;
+    border-bottom: 1px solid $border-color;
+
+    .budget-categories {
+      margin: 0 auto 2rem;
+      max-width: 1200px;
 
       h2 {
         text-align: center;
-        margin-bottom: 2rem;
         color: $primary-color;
+        font-size: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .category-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .category-card {
+        background: white;
+        border: 2px solid $border-color;
+        border-radius: $border-radius-md;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+
+        &:hover {
+          transform: translateY(-5px);
+          border-color: $primary-color;
+          box-shadow: $shadow-md;
+        }
+
+        &.selected {
+          border-color: $primary-color;
+          background: rgba($primary-color, 0.05);
+        }
+
+        .category-icon {
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
+          color: $primary-color;
+        }
+
+        h3 {
+          font-size: 1.2rem;
+          color: $text-primary;
+          margin-bottom: 0.25rem;
+        }
+
+        .budget-range {
+          color: $primary-color;
+          font-weight: 500;
+          font-size: 1.1rem;
+          background: rgba($primary-color, 0.1);
+          padding: 0.5rem 1rem;
+          border-radius: $border-radius-md;
+          width: fit-content;
+        }
+      }
+
+      .clear-budget-btn {
+        display: block;
+        margin: 1rem auto;
+        padding: 0.75rem 1.5rem;
+        background: white;
+        border: 2px solid $primary-color;
+        color: $primary-color;
+        border-radius: $border-radius-md;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+
+        &:hover {
+          background: $primary-color;
+          color: white;
+        }
       }
     }
 
-    .category-grid,
-    .gift-category-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 2rem;
+    .gift-type-selector {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
       margin-bottom: 2rem;
     }
 
-    .category-card,
-    .gift-category-card {
-      background: white;
-      border-radius: $border-radius-md;
-      padding: 2rem;
-      text-align: center;
-      box-shadow: $shadow-sm;
-      transition: $transition;
-      cursor: pointer;
-
-      &:hover {
-        transform: translateY(-5px);
-        box-shadow: $shadow-md;
-      }
-
-      &.selected {
-        border: 2px solid $primary-color;
-        background: rgba($primary-color, 0.05);
-      }
-
-      .category-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-      }
-
-      h3 {
-        color: $primary-color;
-        margin-bottom: 0.5rem;
-      }
-
-      p {
-        color: $text-color;
-        margin-bottom: 1rem;
-      }
-
-      .budget-range {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        background: rgba($primary-color, 0.1);
-        color: $primary-color;
-        border-radius: $border-radius-md;
-        font-weight: 500;
-      }
+    .category-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 2rem;
     }
   }
 
@@ -113,7 +154,7 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
     .loading {
       text-align: center;
       padding: 2rem;
-      color: $text-color;
+      color: $text-secondary;
       font-size: 1.1rem;
       background: rgba($primary-color, 0.05);
       border-radius: $border-radius-md;
@@ -192,7 +233,7 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
         flex-direction: column;
 
         h4 {
-          color: $text-color;
+          color: $text-secondary;
           font-size: 1.1rem;
           margin-bottom: 0.5rem;
           font-weight: 600;
@@ -210,7 +251,7 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
         }
 
         .description {
-          color: darken($text-color, 10%);
+          color: darken($text-secondary, 10%);
           font-size: 0.9rem;
           margin-bottom: 1rem;
           flex-grow: 1;
@@ -247,190 +288,275 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
   .exchange-container {
     max-width: 1200px;
     margin: 0 auto;
-    width: 100%;
+    padding: 24px;
 
     .tabs {
       display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-bottom: 2rem;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 12px;
 
       .tab {
-        padding: 1rem 2rem;
-        font-size: 1.1rem;
-        font-weight: 400;
-        color: $text-color;
-        background: rgba(255, 255, 255, 0.9);
-        border: 2px solid rgba($primary-color, 0.2);
-        border-radius: 25px;
+        background: none;
+        border: none;
+        padding: 12px 24px;
+        font-size: 1rem;
+        color: #666;
         cursor: pointer;
-        transition: $transition;
-        min-width: 200px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        position: relative;
 
         &:hover {
-          background: rgba($primary-color, 0.1);
-          transform: translateY(-2px);
+          background: #f5f5f5;
+          color: #333;
         }
 
         &.active {
-          background: $primary-color;
-          color: white;
-          border-color: $primary-color;
-          box-shadow: 0 4px 15px rgba($primary-color, 0.3);
+          color: #007bff;
+          font-weight: 500;
+
+          &::after {
+            content: '';
+            position: absolute;
+            bottom: -13px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #007bff;
+          }
         }
       }
     }
 
+    .calendar-section {
+      h2 {
+        margin: 0 0 12px;
+        color: #333;
+      }
+
+      .section-description {
+        color: #666;
+        margin-bottom: 24px;
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+    }
+
     .wishlist-section {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 30px;
       padding: 2rem;
-      box-shadow: 0 8px 32px rgba($primary-color, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba($primary-color, 0.2);
 
       h2 {
-        grid-column: 1 / -1;
-        color: $primary-color;
         font-size: 2rem;
-        margin-bottom: 1rem;
+        color: $text-primary;
+        margin-bottom: 0.5rem;
         text-align: center;
       }
 
       .section-description {
-        grid-column: 1 / -1;
-        color: $text-color;
         text-align: center;
+        color: $text-secondary;
         margin-bottom: 2rem;
-        font-size: 1.1rem;
-        line-height: 1.6;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
-      .budget-categories {
-        grid-column: 1 / -1;
+      .gift-type-selector {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
         margin-bottom: 2rem;
 
-        h2 {
-          font-size: 1.5rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .category-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1.5rem;
-        }
-
-        .category-card {
+        .gift-type-btn {
+          padding: 0.75rem 1.5rem;
+          font-size: 1.1rem;
           background: white;
+          border: 2px solid $border-color;
           border-radius: $border-radius-md;
-          padding: 1.5rem;
-          text-align: center;
-          box-shadow: $shadow-sm;
-          transition: $transition;
           cursor: pointer;
-          border: 2px solid transparent;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
+          transition: $transition;
 
           &:hover {
-            transform: translateY(-5px);
-            box-shadow: $shadow-md;
+            border-color: $primary-color;
+            transform: translateY(-2px);
           }
 
-          &.selected {
+          &.active {
+            background: $primary-color;
             border-color: $primary-color;
-            background: rgba($primary-color, 0.05);
+            color: white;
+          }
+        }
+      }
+
+      .category-filters {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+
+        &::-webkit-scrollbar {
+          height: 4px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: $background-light;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: $primary-color;
+          border-radius: 2px;
+        }
+
+        .category-filter {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: white;
+          border: 2px solid $border-color;
+          border-radius: $border-radius-md;
+          cursor: pointer;
+          transition: $transition;
+          white-space: nowrap;
+
+          &:hover {
+            border-color: $primary-color;
+            transform: translateY(-2px);
+          }
+
+          &.active {
+            background: $primary-color;
+            border-color: $primary-color;
+            color: white;
           }
 
           .category-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-          }
-
-          h3 {
-            color: $primary-color;
-            margin-bottom: 0.25rem;
             font-size: 1.2rem;
-            font-weight: 500;
           }
 
-          .budget-range {
-            display: inline-block;
-            padding: 0.4rem 0.8rem;
-            background: rgba($primary-color, 0.1);
-            color: $primary-color;
-            border-radius: $border-radius-md;
-            font-size: 1rem;
-            font-weight: 400;
-            letter-spacing: 0.5px;
+          .category-label {
+            font-weight: 500;
           }
         }
       }
 
-      .wishlist-form {
-        background: white;
-        padding: 2rem;
-        border-radius: $border-radius-lg;
-        box-shadow: $shadow-sm;
+      .gift-search-section {
+        margin-bottom: 2rem;
 
-        h3 {
-          color: $primary-color;
-          font-size: 1.3rem;
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
+        .search-container {
+          position: relative;
+          max-width: 600px;
+          margin: 0 auto 2rem;
 
-        .form-group {
-          margin-bottom: 1.25rem;
-
-          label {
-            display: block;
-            color: $text-color;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-          }
-
-          input {
+          .search-input {
             width: 100%;
-            padding: 0.8rem;
-            border: 1px solid rgba($primary-color, 0.2);
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            border: 2px solid $border-color;
             border-radius: $border-radius-md;
-            font-size: 1rem;
             transition: $transition;
 
             &:focus {
               outline: none;
               border-color: $primary-color;
-              box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+              box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
             }
           }
+
+          .search-spinner {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid $border-color;
+            border-top-color: $primary-color;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+        }
+      }
+
+      .search-results {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .gift-card {
+        background: white;
+        border-radius: $border-radius-md;
+        box-shadow: $shadow-sm;
+        overflow: hidden;
+        transition: $transition;
+
+        &:hover {
+          transform: translateY(-5px);
+          box-shadow: $shadow-md;
         }
 
-        button {
+        .gift-image {
           width: 100%;
-          padding: 1rem;
-          background: $primary-color;
-          color: white;
-          border: none;
-          border-radius: $border-radius-md;
-          font-size: 1.1rem;
-          cursor: pointer;
-          transition: $transition;
+          height: 200px;
+          object-fit: cover;
+        }
 
-          &:hover:not(.disabled) {
-            background: darken($primary-color, 5%);
-            transform: translateY(-2px);
+        .gift-details {
+          padding: 1.5rem;
+
+          h3 {
+            font-size: 1.2rem;
+            color: $text-primary;
+            margin-bottom: 0.5rem;
           }
 
-          &.disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+          .price {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: $primary-color;
+            margin-bottom: 0.5rem;
+          }
+
+          .description {
+            color: $text-secondary;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          .shop, .materials, .shipping, .duration, .location, .rating, .highlights {
+            color: $text-secondary;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .add-to-wishlist-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: $primary-color;
+            color: white;
+            border: none;
+            border-radius: $border-radius-md;
+            cursor: pointer;
+            transition: $transition;
+            margin-top: 1rem;
+
+            &:hover {
+              background: darken($primary-color, 10%);
+            }
+
+            &:disabled {
+              background: $border-color;
+              cursor: not-allowed;
+            }
           }
         }
       }
@@ -438,13 +564,12 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
       .wishlist-items {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5rem;
-        align-content: start;
+        gap: 2rem;
 
         .wishlist-item {
           background: white;
-          padding: 1.5rem;
           border-radius: $border-radius-md;
+          padding: 1.5rem;
           box-shadow: $shadow-sm;
           transition: $transition;
 
@@ -453,70 +578,67 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
             box-shadow: $shadow-md;
           }
 
-          h4 {
-            color: $primary-color;
-            font-size: 1.2rem;
-            margin-bottom: 0.75rem;
+          .item-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: $border-radius-sm;
+            margin-bottom: 1rem;
           }
 
-          p {
-            color: $text-color;
+          h4 {
+            font-size: 1.2rem;
+            color: $text-primary;
             margin-bottom: 0.5rem;
-            font-size: 0.95rem;
+          }
 
-            &.price {
-              font-size: 1.1rem;
-              font-weight: 500;
-              color: $primary-color;
-            }
+          .price {
+            color: $primary-color;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
           }
 
           .budget-category {
-            display: inline-block;
-            padding: 0.4rem 0.8rem;
-            background: rgba($primary-color, 0.1);
-            color: $primary-color;
-            border-radius: $border-radius-md;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: $text-secondary;
             font-size: 0.9rem;
-            margin: 0.5rem 0;
 
             .budget-range {
-              font-weight: 400;
-              letter-spacing: 0.5px;
+              color: $text-secondary;
+              font-size: 0.8rem;
             }
           }
 
+          .duration, .location, .rating {
+            color: $text-secondary;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+          }
+
           .item-actions {
+            margin-top: 1rem;
             display: flex;
             gap: 1rem;
-            margin-top: 1rem;
 
-            .product-link {
+            button {
               flex: 1;
-              text-align: center;
-              padding: 0.5rem;
-              background: rgba($primary-color, 0.1);
-              color: $primary-color;
-              border-radius: $border-radius-md;
-              text-decoration: none;
-              transition: $transition;
-
-              &:hover {
-                background: rgba($primary-color, 0.2);
-              }
-            }
-
-            .delete {
-              padding: 0.5rem 1rem;
-              background: rgba($error-color, 0.1);
-              color: $error-color;
+              padding: 0.75rem;
               border: none;
               border-radius: $border-radius-md;
               cursor: pointer;
               transition: $transition;
+              font-weight: 500;
 
-              &:hover {
-                background: rgba($error-color, 0.2);
+              &.delete {
+                background: #ff4d4f;
+                color: white;
+
+                &:hover {
+                  background: darken(#ff4d4f, 10%);
+                }
               }
             }
           }
@@ -525,42 +647,37 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
     }
 
     .friends-section {
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 30px;
       padding: 2rem;
-      box-shadow: 0 8px 32px rgba($primary-color, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba($primary-color, 0.2);
 
       h2 {
-        color: $primary-color;
         font-size: 2rem;
-        margin-bottom: 1rem;
+        color: $text-primary;
+        margin-bottom: 0.5rem;
         text-align: center;
       }
 
       .section-description {
-        color: $text-color;
         text-align: center;
+        color: $text-secondary;
         margin-bottom: 2rem;
-        font-size: 1.1rem;
-        line-height: 1.6;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .no-connection {
         text-align: center;
-        padding: 2rem;
-        background: white;
-        border-radius: $border-radius-lg;
-        margin-top: 1rem;
+        padding: 3rem;
+        background: $background-light;
+        border-radius: $border-radius-md;
 
         p {
-          color: $text-color;
+          color: $text-secondary;
           margin-bottom: 1rem;
 
           &.hint {
-            color: $primary-color;
-            font-style: italic;
+            font-size: 0.9rem;
+            color: $text-secondary;
           }
         }
       }
@@ -568,31 +685,27 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
       .friends-list {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
+        gap: 2rem;
 
         .friend-card {
           background: white;
-          padding: 1.5rem;
           border-radius: $border-radius-md;
+          padding: 1.5rem;
           box-shadow: $shadow-sm;
-          transition: $transition;
-
-          &:hover {
-            transform: translateY(-3px);
-            box-shadow: $shadow-md;
-          }
 
           h3 {
-            color: $primary-color;
             font-size: 1.3rem;
+            color: $text-primary;
             margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid $border-color;
           }
 
           .friend-wishlist {
             h4 {
-              color: $secondary-color;
               font-size: 1.1rem;
-              margin-bottom: 0.8rem;
+              color: $text-primary;
+              margin-bottom: 1rem;
             }
 
             ul {
@@ -600,27 +713,26 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
               padding: 0;
 
               li {
-                padding: 0.8rem 0;
-                border-bottom: 1px solid rgba($primary-color, 0.1);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                padding: 0.75rem;
+                background: $background-light;
+                border-radius: $border-radius-sm;
+                margin-bottom: 0.5rem;
 
-                &:last-child {
-                  border-bottom: none;
-                }
-
-                a {
+                .product-link {
                   color: $primary-color;
                   text-decoration: none;
                   font-size: 0.9rem;
-                  padding: 0.4rem 1rem;
-                  border-radius: $border-radius-md;
-                  background: rgba($primary-color, 0.1);
+                  padding: 0.25rem 0.5rem;
+                  border: 1px solid $primary-color;
+                  border-radius: $border-radius-sm;
                   transition: $transition;
 
                   &:hover {
-                    background: rgba($primary-color, 0.2);
+                    background: $primary-color;
+                    color: white;
                   }
                 }
               }
@@ -775,7 +887,7 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
 
   @keyframes spin {
     to {
-      transform: rotate(360deg);
+      transform: translateY(-50%) rotate(360deg);
     }
   }
 }
@@ -798,18 +910,29 @@ $background-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF 100%);
       }
 
       .wishlist-section {
-        grid-template-columns: 1fr;
-        padding: 1.5rem;
+        padding: 1rem;
 
-        .budget-categories {
-          .category-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
+        .search-results,
+        .wishlist-items {
+          grid-template-columns: 1fr;
+        }
+
+        .category-filters {
+          padding-bottom: 0.25rem;
+        }
+
+        .category-filter {
+          padding: 0.5rem 1rem;
+          font-size: 0.9rem;
         }
       }
 
       .friends-section {
-        padding: 1.5rem;
+        padding: 1rem;
+
+        .friends-list {
+          grid-template-columns: 1fr;
+        }
       }
     }
   }
@@ -972,6 +1095,8 @@ html, body {
     width: 100%;
     height: 200px;
     object-fit: cover;
+    border-radius: 8px 8px 0 0;
+    background-color: #f5f5f5;
   }
 
   .gift-details {
@@ -980,7 +1105,7 @@ html, body {
     h3 {
       margin: 0 0 0.5rem;
       font-size: 1.2rem;
-      color: $text-color;
+      color: $text-secondary;
     }
 
     .price {
@@ -991,7 +1116,7 @@ html, body {
     }
 
     .description {
-      color: $text-color;
+      color: $text-secondary;
       margin: 0.5rem 0;
       line-height: 1.5;
     }
@@ -1003,7 +1128,7 @@ html, body {
     .location,
     .rating,
     .highlights {
-      color: $text-color;
+      color: $text-secondary;
       font-size: 0.9rem;
       margin: 0.5rem 0;
     }
@@ -1034,7 +1159,7 @@ html, body {
 .no-results {
   text-align: center;
   padding: 2rem;
-  color: $text-color;
+  color: $text-secondary;
   font-size: 1.1rem;
 }
 
@@ -1080,7 +1205,7 @@ html, body {
     .duration,
     .location,
     .rating {
-      color: $text-color;
+      color: $text-secondary;
       font-size: 0.9rem;
       margin-bottom: 0.5rem;
       display: flex;
@@ -1110,7 +1235,7 @@ html, body {
   .duration,
   .location,
   .rating {
-    color: $text-color;
+    color: $text-secondary;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
     display: flex;
@@ -1153,7 +1278,7 @@ html, body {
     cursor: pointer;
     transition: $transition;
     font-size: 0.95rem;
-    color: $text-color;
+    color: $text-secondary;
 
     &:hover {
       background: rgba($primary-color, 0.05);
@@ -1177,6 +1302,41 @@ html, body {
 
     .category-label {
       font-weight: 500;
+    }
+  }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 1024px) {
+  .gift-exchange {
+    .exchange-options {
+      .budget-categories {
+        .category-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .gift-exchange {
+    .exchange-options {
+      padding: 1rem;
+      
+      .budget-categories {
+        .category-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     }
   }
 } 

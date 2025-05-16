@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, doc, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import LoginModal from './LoginModal';
 import GiftExchange from './GiftExchange';
@@ -30,55 +30,102 @@ function LandingPage() {
           return;
         }
 
+        console.log('Current user:', currentUser.uid);
+        console.log('Target user:', userId);
+
         // Don't connect if it's the same user
         if (currentUser.uid === userId) {
+          console.log('Same user detected, redirecting to gift exchange');
           navigate('/gift-exchange');
           return;
         }
 
-        // Get user data first
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        if (!userDoc.exists()) {
-          setError('User not found');
-          setLoading(false);
-          return;
+        // Get or create user documents
+        const [currentUserDoc, targetUserDoc] = await Promise.all([
+          getDoc(doc(db, 'users', currentUser.uid)),
+          getDoc(doc(db, 'users', userId))
+        ]);
+
+        // Create current user document if it doesn't exist
+        if (!currentUserDoc.exists()) {
+          console.log('Creating current user document');
+          await setDoc(doc(db, 'users', currentUser.uid), {
+            displayName: currentUser.displayName,
+            email: currentUser.email,
+            photoURL: currentUser.photoURL,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            partnerId: null,
+            lastConnectionUpdate: null,
+            wishlist: []
+          });
         }
-        setUserData(userDoc.data());
+
+        // Create target user document if it doesn't exist
+        if (!targetUserDoc.exists()) {
+          console.log('Creating target user document');
+          await setDoc(doc(db, 'users', userId), {
+            displayName: 'New User',
+            email: null,
+            photoURL: null,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            partnerId: null,
+            lastConnectionUpdate: null,
+            wishlist: []
+          });
+        }
+
+        // Get updated user data
+        const updatedTargetUserDoc = await getDoc(doc(db, 'users', userId));
+        console.log('Target user data:', updatedTargetUserDoc.data());
+        setUserData(updatedTargetUserDoc.data());
 
         // Check if connection already exists
-        const connectionsRef = collection(db, 'userConnections');
-        const q = query(
-          connectionsRef,
-          where('users', 'array-contains', currentUser.uid)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const existingConnection = querySnapshot.docs.find(doc => {
-          const data = doc.data();
-          return data.users.includes(userId);
-        });
+        const connectionRef = doc(db, 'connections', `${currentUser.uid}_${userId}`);
+        const connectionDoc = await getDoc(connectionRef);
 
-        if (!existingConnection) {
-          // Create new connection in the current user's subcollection
-          const userConnectionsRef = collection(db, 'users', currentUser.uid, 'connections');
-          await setDoc(doc(userConnectionsRef, userId), {
-            connectedAt: new Date().toISOString(),
-            status: 'pending'
-          });
+        if (!connectionDoc.exists()) {
+          console.log('Creating new connection');
+          // Create a connection document in the connections collection
+          const connectionData = {
+            users: [currentUser.uid, userId],
+            status: 'connected',
+            createdAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+          };
 
-          // Create connection in the other user's subcollection
-          const otherUserConnectionsRef = collection(db, 'users', userId, 'connections');
-          await setDoc(doc(otherUserConnectionsRef, currentUser.uid), {
-            connectedAt: new Date().toISOString(),
-            status: 'pending'
-          });
+          try {
+            // Save the connection
+            await setDoc(connectionRef, connectionData);
+            console.log('Connection document created');
+
+            // Update both users' documents with partner information
+            await Promise.all([
+              updateDoc(doc(db, 'users', currentUser.uid), {
+                partnerId: userId,
+                lastConnectionUpdate: new Date().toISOString()
+              }),
+              updateDoc(doc(db, 'users', userId), {
+                partnerId: currentUser.uid,
+                lastConnectionUpdate: new Date().toISOString()
+              })
+            ]);
+            console.log('User documents updated');
+          } catch (dbError) {
+            console.error('Database error:', dbError);
+            throw new Error(`Database error: ${dbError.message}`);
+          }
+        } else {
+          console.log('Connection already exists');
         }
 
         // Redirect to gift exchange
+        console.log('Redirecting to gift exchange');
         navigate('/gift-exchange');
       } catch (err) {
-        console.error('Error connecting users:', err);
-        setError('Failed to connect with user. Please try again.');
+        console.error('Detailed error during connection:', err);
+        setError(`Connection failed: ${err.message}. Please try again.`);
       } finally {
         setLoading(false);
       }
@@ -89,19 +136,29 @@ function LandingPage() {
       if (!currentUser) return;
 
       try {
-        // Get user's connections
-        const connectionsRef = collection(db, 'users', currentUser.uid, 'connections');
-        const querySnapshot = await getDocs(connectionsRef);
+        // Get all connections where the current user is involved
+        const connectionsRef = collection(db, 'connections');
+        const q = query(
+          connectionsRef,
+          where('users', 'array-contains', currentUser.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        
         const friends = [];
-
         for (const doc of querySnapshot.docs) {
-          const friendId = doc.id;
-          const friendData = await getDoc(doc(db, 'users', friendId));
-          if (friendData.exists()) {
-            friends.push({
-              id: friendId,
-              ...friendData.data()
-            });
+          const connectionData = doc.data();
+          const partnerId = connectionData.users.find(id => id !== currentUser.uid);
+          
+          if (partnerId) {
+            const partnerDoc = await getDoc(doc(db, 'users', partnerId));
+            if (partnerDoc.exists()) {
+              friends.push({
+                id: partnerId,
+                ...partnerDoc.data(),
+                connectionStatus: connectionData.status,
+                connectedAt: connectionData.createdAt
+              });
+            }
           }
         }
 
@@ -124,6 +181,7 @@ function LandingPage() {
     };
 
     if (userId) {
+      console.log('Starting connection process for user:', userId);
       connectUsers();
     } else {
       setLoading(false);
@@ -159,7 +217,10 @@ function LandingPage() {
   if (loading) {
     return (
       <div className="landing-page">
-        <div className="loading">Connecting...</div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Connecting users...</p>
+        </div>
       </div>
     );
   }
@@ -167,7 +228,13 @@ function LandingPage() {
   if (error) {
     return (
       <div className="landing-page">
-        <div className="error">{error}</div>
+        <div className="error-container">
+          <h2>Oops! Something went wrong</h2>
+          <p>{error}</p>
+          <button onClick={() => navigate('/')} className="back-button">
+            Return to Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -221,33 +288,70 @@ function LandingPage() {
               </div>
             )}
           </div>
-          {connectedFriends.length > 0 && (
-            <div className="connected-friends">
-              <h3>Your Spouse's Wishlist</h3>
+
+          <div className="connections-status">
+            <h3>Your Connections</h3>
+            {connectedFriends.length > 0 ? (
               <div className="friends-list">
                 {connectedFriends.map((friend) => (
                   <div key={friend.id} className="friend-card">
-                    <h4>{friend.displayName || 'Your Spouse'}</h4>
+                    <div className="friend-header">
+                      <img 
+                        src={friend.photoURL || 'https://via.placeholder.com/50'} 
+                        alt={friend.displayName || 'Friend'} 
+                        className="friend-avatar"
+                      />
+                      <div className="friend-info">
+                        <h4>{friend.displayName || 'Your Spouse'}</h4>
+                        <span className={`connection-status ${friend.connectionStatus}`}>
+                          {friend.connectionStatus === 'pending' ? 'Pending Connection' : 'Connected'}
+                        </span>
+                        <span className="connected-date">
+                          Connected on {new Date(friend.connectedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
                     <div className="friend-wishlist">
                       <h5>Their Wishlist</h5>
-                      <ul>
-                        {friend.wishlist?.map((item, index) => (
-                          <li key={index}>
-                            {item.name}
-                            {item.link && (
-                              <a href={item.link} target="_blank" rel="noopener noreferrer" className="product-link">
-                                View Item
-                              </a>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                      {friendWishlists[friend.id]?.length > 0 ? (
+                        <ul>
+                          {friendWishlists[friend.id].map((item) => (
+                            <li key={item.id} className="wishlist-item">
+                              {item.image && (
+                                <img src={item.image} alt={item.name} className="item-image" />
+                              )}
+                              <div className="item-details">
+                                <span className="item-name">{item.name}</span>
+                                {item.price && (
+                                  <span className="item-price">${item.price}</span>
+                                )}
+                              </div>
+                              {item.link && (
+                                <a 
+                                  href={item.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="view-item-link"
+                                >
+                                  View Item
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="no-wishlist">No wishlist items yet</p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="no-connections">
+                <p>You haven't connected with anyone yet. Share your profile link to get started!</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -32,7 +32,12 @@ function Header() {
       <div className="nav-links">
         <Link to="/">Home</Link>
         <Link to="/about">About</Link>
-        {user && <Link to="/gift-exchange">Gift Exchange</Link>}
+        {user && (
+          <>
+            <Link to="/gift-exchange">Gift Exchange</Link>
+            <Link to="/calendar">Gift Calendar</Link>
+          </>
+        )}
       </div>
       
       {user ? (
