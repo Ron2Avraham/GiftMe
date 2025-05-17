@@ -5,26 +5,26 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const app = express();
+const router = express.Router();
 
 // Enable CORS for all routes with specific options
-app.use(cors({
+router.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+router.use(express.json());
 
 // Handle OPTIONS requests for CORS preflight
-app.options('*', cors());
+router.options('*', cors());
 
 // eBay Sandbox URLs
 const SANDBOX_AUTH_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
 const SANDBOX_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1';
 
 // Get eBay token
-app.post('/token', async (req, res) => {
+router.post('/token', async (req, res) => {
   try {
     if (!process.env.EBAY_APP_ID || !process.env.EBAY_CERT_ID) {
       return res.status(500).json({ 
@@ -56,7 +56,7 @@ app.post('/token', async (req, res) => {
 });
 
 // Search eBay items
-app.get('/search', async (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const { query, token, sort, filter, limit = 10, minPrice, maxPrice } = req.query;
     
@@ -123,4 +123,4 @@ app.get('/search', async (req, res) => {
   }
 });
 
-module.exports = app; 
+module.exports = router; 

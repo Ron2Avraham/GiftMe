@@ -1,8 +1,11 @@
-const EBAY_APP_ID = process.env.REACT_APP_EBAY_APP_ID;
-const EBAY_CERT_ID = process.env.REACT_APP_EBAY_CERT_ID;
-const EBAY_DEV_ID = process.env.REACT_APP_EBAY_DEV_ID;
+const EBAY_APP_ID = process.env.EBAY_APP_ID;
+const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
+const EBAY_DEV_ID = process.env.EBAY_DEV_ID;
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/ebay';
+// Use the correct API URL based on the environment
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api/ebay'  // In production, use relative path
+  : 'http://localhost:5000/api/ebay';  // In development, use local server
 
 // Cache for the eBay token with longer expiration buffer
 let tokenCache = {
