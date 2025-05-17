@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const dotenv = require('dotenv');
-const path = require('path');
 
 dotenv.config();
 
@@ -20,17 +19,12 @@ app.use(express.json());
 // Handle OPTIONS requests for CORS preflight
 app.options('*', cors());
 
-// Serve static files from the React app in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'build')));
-}
-
 // eBay Sandbox URLs
 const SANDBOX_AUTH_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
 const SANDBOX_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1';
 
 // Get eBay token
-app.post('/api/ebay/token', async (req, res) => {
+app.post('/token', async (req, res) => {
   try {
     if (!process.env.EBAY_APP_ID || !process.env.EBAY_CERT_ID) {
       return res.status(500).json({ 
@@ -62,7 +56,7 @@ app.post('/api/ebay/token', async (req, res) => {
 });
 
 // Search eBay items
-app.get('/api/ebay/search', async (req, res) => {
+app.get('/search', async (req, res) => {
   try {
     const { query, token, sort, filter, limit = 10, minPrice, maxPrice } = req.query;
     
@@ -129,20 +123,4 @@ app.get('/api/ebay/search', async (req, res) => {
   }
 });
 
-// For any other route, serve the React app
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
-  });
-}
-
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  const port = process.env.PORT || 5000;
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
-}
-
-// Export the Express API
 module.exports = app; 
