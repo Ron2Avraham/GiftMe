@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
@@ -10,6 +11,11 @@ const app = express();
 // Enable CORS for all routes
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React app in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'build')));
+}
 
 // eBay Sandbox URLs
 const SANDBOX_AUTH_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
@@ -113,6 +119,13 @@ app.get('/api/ebay/search', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// For any other route, serve the React app
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+  });
+}
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
