@@ -1,23 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build",
-        "buildCommand": "CI=false npm run build",
-        "installCommand": "npm install"
-      }
-    },
-    {
       "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "nodeVersion": "18.x"
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -26,11 +12,8 @@
       "dest": "server.js"
     },
     {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/build/$1"
+      "dest": "server.js"
     }
   ]
 }
