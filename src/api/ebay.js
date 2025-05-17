@@ -56,6 +56,7 @@ export const searchEbayItems = async (query, token, options = {}) => {
       return [];
     }
 
+    // Properly encode the query while preserving spaces
     let url = `${API_BASE_URL}/search?query=${encodeURIComponent(query)}&limit=${limit}&token=${encodeURIComponent(token)}`;
     
     // Combine all filters into a single filter parameter
@@ -109,6 +110,7 @@ export const searchEbayItems = async (query, token, options = {}) => {
     
     return data.itemSummaries || [];
   } catch (error) {
+    console.error('Error searching eBay items:', error);
     return [];
   }
 }; 

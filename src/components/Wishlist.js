@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { searchProducts, getProductCategories } from '../api/products';
 import { searchExperiences, getExperienceCategories } from '../api/experiences';
 import { getEbayToken, searchEbayItems } from '../api/ebay';
+import { sanitizeInput, sanitizeUrl } from '../utils/security';
 import TrendingGifts from './TrendingGifts';
 import SeasonalGuides from './SeasonalGuides';
 import ProductImageGallery from './ProductImageGallery';
@@ -142,11 +143,11 @@ function Wishlist() {
 
       const wishlistRef = collection(db, 'users', currentUser.uid, 'wishlist');
       const wishlistItem = {
-        name: item.name || '',
+        name: sanitizeInput(item.name),
         price: `$${parseFloat(item.price).toFixed(2)}`,
-        description: item.description || '',
-        image: item.image || '',
-        category: item.category || 'uncategorized',
+        description: sanitizeInput(item.description || ''),
+        image: sanitizeUrl(item.image || ''),
+        category: sanitizeInput(item.category || 'uncategorized'),
         budgetCategory: selectedBudget || 'moderate',
         createdAt: new Date().toISOString(),
         giftType: giftType
@@ -159,6 +160,28 @@ function Wishlist() {
     } catch (error) {
       console.error('Error adding item:', error);
       alert('Failed to add item to wishlist: ' + error.message);
+    }
+  };
+
+  const handleEditItem = async (itemId, updatedData) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const sanitizedData = {
+        ...updatedData,
+        name: sanitizeInput(updatedData.name),
+        description: sanitizeInput(updatedData.description || ''),
+        image: sanitizeUrl(updatedData.image || ''),
+        category: sanitizeInput(updatedData.category || 'uncategorized')
+      };
+
+      await updateDoc(doc(db, 'users', currentUser.uid, 'wishlist', itemId), sanitizedData);
+      setWishlist(wishlist.map(item => 
+        item.id === itemId ? { ...item, ...sanitizedData } : item
+      ));
+    } catch (error) {
+      console.error('Error updating item:', error);
     }
   };
 
@@ -260,7 +283,7 @@ function Wishlist() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(sanitizeInput(e.target.value))}
             placeholder={`Search for ${giftType}...`}
             className="search-input"
           />

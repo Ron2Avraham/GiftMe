@@ -47,6 +47,9 @@ app.get('/api/ebay/item_summary/search', async (req, res) => {
       return res.status(400).json({ error: 'Missing search query parameter' });
     }
 
+    // Properly encode the query while preserving spaces
+    const encodedQuery = encodeURIComponent(q.trim());
+
     // Build filter string
     let filterString = 'conditions:{NEW}';
     if (minPrice !== undefined) {
@@ -64,7 +67,7 @@ app.get('/api/ebay/item_summary/search', async (req, res) => {
     console.log('Sort:', sort);
 
     const response = await fetch(
-      `${SANDBOX_API_URL}/item_summary/search?q=${encodeURIComponent(q)}&limit=${limit}&filter=${encodeURIComponent(filterString)}${sort ? `&sort=${sort}` : ''}`,
+      `${SANDBOX_API_URL}/item_summary/search?q=${encodedQuery}&limit=${limit}&filter=${encodeURIComponent(filterString)}${sort ? `&sort=${sort}` : ''}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,

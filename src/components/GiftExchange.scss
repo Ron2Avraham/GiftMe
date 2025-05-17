@@ -449,42 +449,68 @@ $transition: all 0.3s ease;
 
         .search-container {
           position: relative;
-          width: 100%;
-          margin-bottom: 20px;
+          margin-bottom: 24px;
 
           .search-input {
             width: 100%;
-            padding: 12px 20px;
-            font-size: 16px;
-            border: 2px solid #e0e0e0;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
             border-radius: 8px;
-            transition: all 0.3s ease;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
 
             &:focus {
-              border-color: #4a90e2;
+              border-color: #007bff;
               outline: none;
-              box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
             }
           }
 
           .search-loading {
             position: absolute;
-            right: 20px;
+            right: 16px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             color: #666;
-            font-size: 14px;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
 
             .loading-spinner {
               width: 20px;
               height: 20px;
               border: 2px solid #f3f3f3;
-              border-top: 2px solid #4a90e2;
+              border-top: 2px solid #007bff;
               border-radius: 50%;
               animation: spin 1s linear infinite;
+            }
+
+            .loading-dots {
+              display: flex;
+              gap: 4px;
+              align-items: center;
+              height: 20px;
+
+              span {
+                width: 6px;
+                height: 6px;
+                background: #007bff;
+                border-radius: 50%;
+                animation: dots 1.4s infinite ease-in-out both;
+
+                &:nth-child(1) {
+                  animation-delay: -0.32s;
+                }
+
+                &:nth-child(2) {
+                  animation-delay: -0.16s;
+                }
+              }
             }
           }
         }
@@ -894,8 +920,18 @@ $transition: all 0.3s ease;
   }
 
   @keyframes spin {
-    to {
-      transform: translateY(-50%) rotate(360deg);
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes dots {
+    0%, 80%, 100% { 
+      transform: scale(0);
+      opacity: 0.3;
+    }
+    40% { 
+      transform: scale(1);
+      opacity: 1;
     }
   }
 }
@@ -1346,5 +1382,169 @@ html, body {
         }
       }
     }
+  }
+}
+
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  max-width: 300px;
+  color: white;
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .notification-icon {
+    font-size: 1.2rem;
+  }
+
+  &.fade-out {
+    animation: slideOut 0.3s ease-in forwards;
+  }
+
+  &.success-notification {
+    background: #28a745;
+  }
+
+  &.error-notification {
+    background: #dc3545;
+  }
+
+  &.warning-notification {
+    background: #ffc107;
+    color: #000;
+  }
+
+  &.info-notification {
+    background: #17a2b8;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.search-results-loading {
+  margin-top: 2rem;
+
+  .loading-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+  }
+
+  .skeleton-card {
+    background: white;
+    border-radius: $border-radius-md;
+    overflow: hidden;
+    box-shadow: $shadow-sm;
+    animation: pulse 1.5s infinite;
+
+    .skeleton-image {
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-content {
+      padding: 1.5rem;
+
+      .skeleton-title {
+        height: 24px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+
+      .skeleton-price {
+        height: 20px;
+        width: 80px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+
+      .skeleton-description {
+        height: 16px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+
+        &::before {
+          content: '';
+          display: block;
+          height: 16px;
+          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          border-radius: 4px;
+          margin-bottom: 0.5rem;
+        }
+      }
+
+      .skeleton-button {
+        height: 40px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: $border-radius-md;
+      }
+    }
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
   }
 } 

@@ -5,12 +5,14 @@ import { db, auth } from '../firebase';
 import { searchProducts, getProductCategories } from '../api/products';
 import { searchExperiences, getExperienceCategories } from '../api/experiences';
 import { getEbayToken, searchEbayItems } from '../api/ebay';
+import { sanitizeInput, sanitizeUrl } from '../utils/security';
 import TrendingGifts from './TrendingGifts';
 import SeasonalGuides from './SeasonalGuides';
 import ProductImageGallery from './ProductImageGallery';
 import WishlistPrivacy from './WishlistPrivacy';
 import GiftCalendar from './GiftCalendar';
 import Wishlist from './Wishlist';
+import { showNotification } from '../utils/notifications';
 import './GiftExchange.scss';
 
 function GiftExchange() {
@@ -58,18 +60,23 @@ function GiftExchange() {
     }
   }, [searchQuery, selectedCategory, debouncedSearch]);
 
-  const searchGifts = async (query, category) => {
+  const searchGifts = async (query, category, budgetOverride = null) => {
+    console.log('Starting search, setting isSearching to true');
     setIsSearching(true);
     try {
       let results = [];
       
       if (giftType === 'products') {
+        console.log('Searching for products...');
         const token = await getEbayToken();
         const searchQuery = query.trim() || 'gift';
 
+        // Use the budgetOverride if provided, otherwise use selectedBudget
+        const currentBudget = budgetOverride !== null ? budgetOverride : selectedBudget;
+
         // Set strict price ranges based on budget
         let minPrice, maxPrice;
-        switch (selectedBudget) {
+        switch (currentBudget) {
           case 'budget':
             minPrice = 0;
             maxPrice = 49.99;
@@ -95,10 +102,12 @@ function GiftExchange() {
         const searchOptions = {
           limit: 20,
           sort: 'bestMatch',
-          filter: selectedBudget ? `buyingOptions:{buyItNow},conditions:{NEW|USED},price:[${minPrice}..${maxPrice}]` : 'buyingOptions:{buyItNow},conditions:{NEW|USED}'
+          filter: currentBudget ? `buyingOptions:{buyItNow},conditions:{NEW|USED},price:[${minPrice}..${maxPrice}]` : 'buyingOptions:{buyItNow},conditions:{NEW|USED}'
         };
 
+        console.log('Calling eBay API with options:', searchOptions);
         const ebayResults = await searchEbayItems(searchQuery, token, searchOptions);
+        console.log('Received eBay results:', ebayResults?.length || 0, 'items');
         
         if (ebayResults && ebayResults.length > 0) {
           results = ebayResults
@@ -106,11 +115,11 @@ function GiftExchange() {
               const price = parseFloat(item.price?.value || 0);
               
               // Only apply strict price filtering if a budget is selected
-              if (selectedBudget) {
-                if (selectedBudget === 'budget' && price >= 50) return false;
-                if (selectedBudget === 'moderate' && (price < 50 || price >= 150)) return false;
-                if (selectedBudget === 'premium' && (price < 150 || price >= 500)) return false;
-                if (selectedBudget === 'luxury' && price < 500) return false;
+              if (currentBudget) {
+                if (currentBudget === 'budget' && price >= 50) return false;
+                if (currentBudget === 'moderate' && (price < 50 || price >= 150)) return false;
+                if (currentBudget === 'premium' && (price < 150 || price >= 500)) return false;
+                if (currentBudget === 'luxury' && price < 500) return false;
               }
 
               return true;
@@ -130,15 +139,18 @@ function GiftExchange() {
             }));
         }
       } else {
+        console.log('Searching for experiences...');
         results = await searchExperiences(query, category);
       }
 
+      console.log('Setting results:', results.length, 'items');
       setAllResults(results);
       setSearchResults(results);
+      console.log('Search complete, setting isSearching to false');
+      setIsSearching(false);
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
-    } finally {
       setIsSearching(false);
     }
   };
@@ -153,7 +165,7 @@ function GiftExchange() {
   const handleBudgetChange = (budgetId) => {
     const newBudget = selectedBudget === budgetId ? null : budgetId;
     setSelectedBudget(newBudget);
-    searchGifts(searchQuery, selectedCategory);
+    searchGifts(searchQuery, selectedCategory, newBudget);
   };
 
   // Update gift type
@@ -263,10 +275,13 @@ function GiftExchange() {
     if (!currentUser) return;
 
     try {
+      const itemToDelete = wishlist.find(item => item.id === itemId);
       await deleteDoc(doc(db, 'users', currentUser.uid, 'wishlist', itemId));
       setWishlist(wishlist.filter(item => item.id !== itemId));
+      showNotification(`Removed "${itemToDelete.name}" from your wishlist`, 'info');
     } catch (error) {
       console.error('Error deleting item:', error);
+      showNotification('Failed to delete item: ' + error.message, 'error');
     }
   };
 
@@ -275,13 +290,23 @@ function GiftExchange() {
     if (!currentUser) return;
 
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid, 'wishlist', itemId), updatedData);
+      const sanitizedData = {
+        ...updatedData,
+        name: sanitizeInput(updatedData.name),
+        description: sanitizeInput(updatedData.description || ''),
+        image: sanitizeUrl(updatedData.image || ''),
+        category: sanitizeInput(updatedData.category || 'uncategorized')
+      };
+
+      await updateDoc(doc(db, 'users', currentUser.uid, 'wishlist', itemId), sanitizedData);
       setWishlist(wishlist.map(item => 
-        item.id === itemId ? { ...item, ...updatedData } : item
+        item.id === itemId ? { ...item, ...sanitizedData } : item
       ));
       setEditingItem(null);
+      showNotification(`Updated "${updatedData.name}" successfully`, 'success');
     } catch (error) {
       console.error('Error updating item:', error);
+      showNotification('Failed to update item: ' + error.message, 'error');
     }
   };
 
@@ -290,21 +315,31 @@ function GiftExchange() {
     if (!currentUser) return;
 
     try {
-      // Validate required fields
+      // Validate and sanitize required fields
       if (!item.name || !item.price) {
         throw new Error('Item name and price are required');
       }
 
+      // Check for duplicate items
+      const isDuplicate = wishlist.some(
+        existingItem => existingItem.name.toLowerCase() === item.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        showNotification('This item is already in your wishlist!', 'warning');
+        return;
+      }
+
       const wishlistRef = collection(db, 'users', currentUser.uid, 'wishlist');
       const wishlistItem = {
-        name: item.name || '',
+        name: sanitizeInput(item.name),
         price: `$${parseFloat(item.price).toFixed(2)}`,
-        description: item.description || '',
-        image: item.image || '',
-        category: item.category || 'uncategorized',
+        description: sanitizeInput(item.description || ''),
+        image: sanitizeUrl(item.image || ''),
+        category: sanitizeInput(item.category || 'uncategorized'),
         budgetCategory: selectedBudget || 'moderate',
         createdAt: new Date().toISOString(),
-        giftType: giftType // Add gift type to distinguish between products and experiences
+        giftType: giftType
       };
 
       const docRef = await addDoc(wishlistRef, wishlistItem);
@@ -315,10 +350,11 @@ function GiftExchange() {
       }]);
       setSearchQuery('');
       setSearchResults([]);
+
+      showNotification(`Added "${item.name}" to your wishlist!`, 'success');
     } catch (error) {
       console.error('Error adding item:', error);
-      // You might want to show this error to the user
-      alert('Failed to add item to wishlist: ' + error.message);
+      showNotification('Failed to add item to wishlist: ' + error.message, 'error');
     }
   };
 
@@ -349,16 +385,14 @@ function GiftExchange() {
     if (!currentUser) return;
 
     try {
-      // Update privacy settings in Firestore
       await updateDoc(doc(db, 'users', currentUser.uid), {
         wishlistPrivacy: settings
       });
-
-      // Update local state
       setWishlistPrivacy(settings);
+      showNotification('Privacy settings updated successfully', 'success');
     } catch (error) {
       console.error('Error updating privacy settings:', error);
-      alert('Failed to update privacy settings. Please try again.');
+      showNotification('Failed to update privacy settings', 'error');
     }
   };
 
@@ -452,19 +486,41 @@ function GiftExchange() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                  }}
                   placeholder={`Search for ${giftType}...`}
                   className="search-input"
                 />
                 {isSearching && (
                   <div className="search-loading">
                     <div className="loading-spinner"></div>
-                    <span>Searching...</span>
+                    <div className="loading-dots">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {searchResults.length > 0 && (
+              {isSearching ? (
+                <div className="search-results-loading">
+                  <div className="loading-skeleton">
+                    {[1, 2, 3, 4].map((index) => (
+                      <div key={index} className="skeleton-card">
+                        <div className="skeleton-image"></div>
+                        <div className="skeleton-content">
+                          <div className="skeleton-title"></div>
+                          <div className="skeleton-price"></div>
+                          <div className="skeleton-description"></div>
+                          <div className="skeleton-button"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : searchResults.length > 0 ? (
                 <div className="search-results">
                   {searchResults.map(item => (
                     <div key={item.id} className="gift-card">
@@ -503,35 +559,37 @@ function GiftExchange() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="no-results">
+                  <p>No {giftType} found. Try a different search or category.</p>
+                </div>
               )}
             </div>
-
+            
+            <h3>My Wishlist Items</h3>
             <div className="wishlist-items">
-              <h3>My Wishlist Items</h3>
               {wishlist.map(item => (
-                <div key={item.id} className="gift-card">
+                <div key={item.id} className="wishlist-item">
                   <ProductImageGallery 
                     images={item.images || [item.image]} 
                     alt={item.name}
                   />
-                  <div className="gift-details">
-                    <h3>{item.name}</h3>
-                    <p className="price">{item.price}</p>
-                    <p className="description">{item.description}</p>
-                    <div className="gift-actions">
-                      <button 
-                        className="edit-btn"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="delete-btn"
-                        onClick={() => handleDeleteItem(item.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                  <h4>{item.name}</h4>
+                  <p className="price">{item.price}</p>
+                  <p className="description">{item.description}</p>
+                  <div className="item-actions">
+                    <button 
+                      className="edit-btn"
+                      onClick={() => setEditingItem(item)}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      className="delete-btn"
+                      onClick={() => handleDeleteItem(item.id)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}

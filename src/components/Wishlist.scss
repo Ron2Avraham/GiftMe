@@ -4,15 +4,26 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-  h2 {
-    margin: 0 0 16px;
-    color: #333;
-    font-size: 1.5rem;
-  }
+  .section-header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 
-  .section-description {
-    color: #666;
-    margin-bottom: 24px;
+    h2 {
+      margin: 0 0 12px;
+      color: #333;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+
+    .section-description {
+      color: #666;
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
   }
 
   .exchange-options {
@@ -225,62 +236,218 @@
 
   .wishlist-items {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 24px;
+    margin-top: 32px;
 
     .wishlist-item {
       background: #f8f9fa;
-      border-radius: 8px;
-      padding: 16px;
-      transition: transform 0.2s ease;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
 
       &:hover {
-        transform: translateY(-2px);
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .gift-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 8px;
       }
 
       h4 {
-        margin: 12px 0 8px;
+        margin: 0;
         color: #333;
+        font-size: 1.2rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
 
       .price {
         color: #28a745;
-        font-weight: 500;
-        margin: 0 0 8px;
-      }
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
 
-      .budget-category {
-        color: #666;
-        font-size: 0.9rem;
-        margin: 0 0 8px;
-
-        .budget-range {
-          color: #999;
+        &::before {
+          content: '💰';
+          font-size: 1.2rem;
         }
       }
 
-      p {
+      .budget-category {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         color: #666;
         font-size: 0.9rem;
-        margin: 4px 0;
+        margin: 0;
+        padding: 6px 12px;
+        background: rgba(0, 123, 255, 0.1);
+        border-radius: 6px;
+        width: fit-content;
+
+        .budget-range {
+          color: #666;
+          font-size: 0.85rem;
+          opacity: 0.8;
+        }
+      }
+
+      .description {
+        color: #666;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin: 0;
+        flex-grow: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
 
       .item-actions {
+        display: flex;
+        gap: 12px;
         margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
 
-        .delete {
-          width: 100%;
-          padding: 8px;
-          background: none;
-          border: 1px solid #dc3545;
-          color: #dc3545;
-          border-radius: 6px;
+        button {
+          flex: 1;
+          padding: 12px 16px;
+          border: none;
+          border-radius: 8px;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 0.95rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
 
-          &:hover {
+          &.edit-btn {
+            background: #007bff;
+            color: white;
+
+            &:hover {
+              background: darken(#007bff, 10%);
+              transform: translateY(-2px);
+            }
+
+            &:active {
+              transform: translateY(0);
+            }
+          }
+
+          &.delete-btn {
             background: #dc3545;
             color: white;
+
+            &:hover {
+              background: darken(#dc3545, 10%);
+              transform: translateY(-2px);
+            }
+
+            &:active {
+              transform: translateY(0);
+            }
+          }
+
+          &::before {
+            font-size: 1.1rem;
+          }
+
+          &.edit-btn::before {
+            content: '✏️';
+          }
+
+          &.delete-btn::before {
+            content: '🗑️';
+          }
+        }
+      }
+
+      .duration, .location, .rating {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #666;
+        font-size: 0.9rem;
+        margin: 0;
+
+        &::before {
+          font-size: 1.1rem;
+        }
+      }
+
+      .duration::before {
+        content: '⏱️';
+      }
+
+      .location::before {
+        content: '📍';
+      }
+
+      .rating::before {
+        content: '⭐';
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .wishlist-section {
+    padding: 16px;
+
+    .section-header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+
+      h2 {
+        font-size: 1.75rem;
+      }
+
+      .section-description {
+        font-size: 1rem;
+      }
+    }
+
+    .wishlist-items {
+      grid-template-columns: 1fr;
+      gap: 16px;
+
+      .wishlist-item {
+        padding: 16px;
+
+        .gift-image {
+          height: 180px;
+        }
+
+        .item-actions {
+          flex-direction: row;
+          gap: 8px;
+
+          button {
+            padding: 10px;
+            font-size: 0.9rem;
           }
         }
       }

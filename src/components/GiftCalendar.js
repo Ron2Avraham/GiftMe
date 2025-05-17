@@ -4,6 +4,16 @@ import { db, auth } from '../firebase';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './GiftCalendar.scss';
+import {
+  sanitizeText,
+  sanitizePrice,
+  sanitizeDate,
+  sanitizeDescription,
+  sanitizeEventType,
+  sanitizeBoolean,
+  sanitizeGiftIdeas,
+  sanitizeWishlistItemId
+} from '../utils/sanitize';
 
 const PLACEHOLDER_IMAGE = 'https://placehold.co/300x300/e2e8f0/1e293b?text=No+Image';
 
@@ -179,25 +189,23 @@ const GiftCalendar = () => {
     }
 
     try {
-      const formattedDate = new Date(newEvent.date).toISOString();
-      
-      const eventData = {
-        title: newEvent.title.trim(),
-        date: formattedDate,
-        type: newEvent.type || 'custom',
-        reminder: Boolean(newEvent.reminder),
-        description: newEvent.description?.trim() || '',
-        budget: newEvent.budget?.trim() || '',
-        giftIdeas: Array.isArray(newEvent.giftIdeas) ? newEvent.giftIdeas : [],
-        linkedWishlistItem: newEvent.linkedWishlistItem,
+      const sanitizedEvent = {
+        title: sanitizeText(newEvent.title),
+        date: sanitizeDate(newEvent.date),
+        type: sanitizeEventType(newEvent.type),
+        reminder: sanitizeBoolean(newEvent.reminder),
+        description: sanitizeDescription(newEvent.description),
+        budget: sanitizePrice(newEvent.budget),
+        giftIdeas: sanitizeGiftIdeas(newEvent.giftIdeas),
+        linkedWishlistItem: sanitizeWishlistItemId(newEvent.linkedWishlistItem),
         createdAt: new Date().toISOString(),
         userId: currentUser.uid
       };
 
       const eventsRef = collection(db, 'users', currentUser.uid, 'calendar');
-      const docRef = await addDoc(eventsRef, eventData);
+      const docRef = await addDoc(eventsRef, sanitizedEvent);
 
-      setEvents([...events, { id: docRef.id, ...eventData }]);
+      setEvents([...events, { id: docRef.id, ...sanitizedEvent }]);
       setNewEvent({
         title: '',
         date: new Date().toISOString().split('T')[0],
@@ -220,7 +228,7 @@ const GiftCalendar = () => {
       setNotifications(prev => [...prev, {
         id: Date.now(),
         type: 'error',
-        message: error.message || 'Failed to add event. Please try again.'
+        message: 'Failed to add event. Please try again.'
       }]);
     }
   };
@@ -286,13 +294,16 @@ const GiftCalendar = () => {
   };
 
   const handleDateInputChange = (e) => {
-    const date = new Date(e.target.value);
-    if (!isNaN(date.getTime())) {
-      setSelectedDate(date);
-      setNewEvent(prev => ({
-        ...prev,
-        date: e.target.value
-      }));
+    const sanitizedDate = sanitizeDate(e.target.value);
+    if (sanitizedDate) {
+      const date = new Date(sanitizedDate);
+      if (!isNaN(date.getTime())) {
+        setSelectedDate(date);
+        setNewEvent(prev => ({
+          ...prev,
+          date: sanitizedDate
+        }));
+      }
     }
   };
 
