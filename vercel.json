@@ -2,19 +2,25 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/ebay.js",
+      "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
   "routes": [
     {
-      "src": "/api/ebay/token",
-      "dest": "/api/ebay.js"
+      "src": "/api/(.*)",
+      "dest": "server.js"
     },
     {
-      "src": "/api/ebay/search",
-      "dest": "/api/ebay.js"
+      "src": "/(.*)",
+      "dest": "/build/$1"
     }
   ]
-} 
-} 
+}
