@@ -8,9 +8,17 @@ dotenv.config();
 
 const app = express();
 
-// Enable CORS for all routes
-app.use(cors());
+// Enable CORS for all routes with specific options
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
+
+// Handle OPTIONS requests for CORS preflight
+app.options('*', cors());
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
@@ -48,6 +56,7 @@ app.post('/api/ebay/token', async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
+    console.error('Token error:', error);
     res.status(500).json({ error: error.message });
   }
 });
