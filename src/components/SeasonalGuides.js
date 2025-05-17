@@ -15,26 +15,15 @@ const SeasonalGuides = ({ onAddToWishlist, budgetRange }) => {
       try {
         const token = await getEbayToken();
         const currentSeason = getCurrentSeason();
-        console.log('Current season:', currentSeason);
-        
         const searchQueries = getSeasonalSearchQueries(currentSeason);
-        console.log('Search queries:', searchQueries);
         
-        // Try each search query until we get results
-        let results = [];
-        for (const query of searchQueries) {
-          console.log('Searching for:', query);
-          const queryResults = await searchEbayItems(query, token, {
-            limit: 4, // Get 4 items per query
-            minPrice: budgetRange?.min,
-            maxPrice: budgetRange?.max
-          });
-          console.log('Results for', query, ':', queryResults.length);
-          results = [...results, ...queryResults];
-          if (results.length >= 8) break; // Stop if we have enough items
-        }
-
-        console.log('Total results:', results.length);
+        // Combine all queries into one search with OR operator
+        const combinedQuery = searchQueries.join(' OR ');
+        const results = await searchEbayItems(combinedQuery, token, {
+          limit: 8, // Get all items in one call
+          minPrice: budgetRange?.min,
+          maxPrice: budgetRange?.max
+        });
 
         const formattedResults = results.map(item => ({
           id: item.itemId,
@@ -50,7 +39,6 @@ const SeasonalGuides = ({ onAddToWishlist, budgetRange }) => {
           link: item.itemWebUrl
         }));
 
-        console.log('Formatted results:', formattedResults);
         setSeasonalItems(formattedResults);
       } catch (error) {
         console.error('Error loading seasonal items:', error);

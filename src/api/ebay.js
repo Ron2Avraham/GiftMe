@@ -2,11 +2,22 @@ const EBAY_APP_ID = process.env.REACT_APP_EBAY_APP_ID;
 const EBAY_CERT_ID = process.env.REACT_APP_EBAY_CERT_ID;
 const EBAY_DEV_ID = process.env.REACT_APP_EBAY_DEV_ID;
 
-const API_BASE_URL = 'http://localhost:5000/api/ebay';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/ebay';
 
-// Get OAuth token
+// Cache for the eBay token with longer expiration buffer
+let tokenCache = {
+  token: null,
+  expiresAt: null
+};
+
+// Get OAuth token with improved caching
 export const getEbayToken = async () => {
   try {
+    // Return cached token if it's still valid (with 10-minute buffer)
+    if (tokenCache.token && tokenCache.expiresAt && tokenCache.expiresAt > Date.now() + 600000) {
+      return tokenCache.token;
+    }
+
     const response = await fetch(`${API_BASE_URL}/token`, {
       method: 'POST',
       headers: {
@@ -19,39 +30,50 @@ export const getEbayToken = async () => {
     }
 
     const data = await response.json();
+    
+    // Cache the token
+    tokenCache = {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in * 1000)
+    };
+
     return data.access_token;
   } catch (error) {
-    console.error('Error getting eBay token:', error);
     throw error;
   }
 };
 
-// Get trending items
+// Search eBay items with optimized parameters
 export const searchEbayItems = async (query, token, options = {}) => {
   try {
     const { limit = 10, minPrice, maxPrice, sort, filter } = options;
-    let url = `${API_BASE_URL}/item_summary/search?q=${encodeURIComponent(query)}&limit=${limit}&token=${encodeURIComponent(token)}`;
     
-    // Add price filters if provided
+    // Return empty array for empty queries
+    if (!query?.trim()) {
+      return [];
+    }
+
+    let url = `${API_BASE_URL}/search?query=${encodeURIComponent(query)}&limit=${limit}&token=${encodeURIComponent(token)}`;
+    
+    // Combine all filters into a single filter parameter
+    const filters = [];
     if (minPrice !== undefined) {
-      url += `&filter=price:[${minPrice}..]`;
+      filters.push(`price:[${minPrice}..]`);
     }
     if (maxPrice !== undefined) {
-      url += `&filter=price:[..${maxPrice}]`;
+      filters.push(`price:[..${maxPrice}]`);
+    }
+    if (filter) {
+      filters.push(filter);
+    }
+    if (filters.length > 0) {
+      url += `&filter=${filters.join(',')}`;
     }
 
     // Add sort if provided
     if (sort) {
       url += `&sort=${sort}`;
     }
-
-    // Add filter if provided
-    if (filter) {
-      url += `&filter=${filter}`;
-    }
-
-    console.log('Searching eBay with URL:', url);
-    console.log('Search options:', { query, limit, minPrice, maxPrice, sort, filter });
 
     const response = await fetch(url, {
       headers: {
@@ -60,24 +82,12 @@ export const searchEbayItems = async (query, token, options = {}) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('eBay API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      throw new Error(`eBay API error: ${response.status} - ${errorText}`);
+      throw new Error(`eBay API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('eBay search results:', {
-      totalItems: data.itemSummaries?.length || 0,
-      priceRange: data.itemSummaries?.map(item => item.price?.value).join(', ')
-    });
-
     return data.itemSummaries || [];
   } catch (error) {
-    console.error('Error searching eBay:', error);
     return [];
   }
 }; 

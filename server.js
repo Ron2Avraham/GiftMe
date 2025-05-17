@@ -18,15 +18,7 @@ const SANDBOX_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1';
 // Get eBay token
 app.post('/api/ebay/token', async (req, res) => {
   try {
-    // Log the environment variables (without exposing full values)
-    console.log('Environment check:');
-    console.log('EBAY_APP_ID length:', process.env.EBAY_APP_ID?.length || 0);
-    console.log('EBAY_CERT_ID length:', process.env.EBAY_CERT_ID?.length || 0);
-    console.log('EBAY_DEV_ID length:', process.env.EBAY_DEV_ID?.length || 0);
-
-    // Validate environment variables
     if (!process.env.EBAY_APP_ID || !process.env.EBAY_CERT_ID) {
-      console.error('Missing eBay credentials in environment variables');
       return res.status(500).json({ 
         error: 'Server configuration error: Missing eBay credentials' 
       });
@@ -34,7 +26,6 @@ app.post('/api/ebay/token', async (req, res) => {
 
     const credentials = Buffer.from(`${process.env.EBAY_APP_ID}:${process.env.EBAY_CERT_ID}`).toString('base64');
     
-    console.log('Making request to eBay with credentials length:', credentials.length);
     const response = await fetch(SANDBOX_AUTH_URL, {
       method: 'POST',
       headers: {
@@ -43,35 +34,22 @@ app.post('/api/ebay/token', async (req, res) => {
       },
       body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope'
     });
-
-    console.log('eBay response status:', response.status);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('eBay API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      throw new Error(`eBay API error: ${response.status} - ${errorText}`);
+      throw new Error(`eBay API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Successfully obtained eBay token');
     res.json(data);
   } catch (error) {
-    console.error('Error getting eBay token:', error);
-    res.status(500).json({ 
-      error: error.message,
-      details: 'Check server logs for more information'
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Search eBay items
 app.get('/api/ebay/search', async (req, res) => {
   try {
-    const { query, token } = req.query;
+    const { query, token, sort, filter, limit = 10, minPrice, maxPrice } = req.query;
     
     if (!token) {
       return res.status(400).json({ error: 'Missing token parameter' });
@@ -81,46 +59,61 @@ app.get('/api/ebay/search', async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    console.log('Searching eBay with query:', query);
-    const response = await fetch(
-      `${SANDBOX_API_URL}/item_summary/search?q=${encodeURIComponent(query.trim())}&limit=10`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    let ebayUrl = `${SANDBOX_API_URL}/item_summary/search?q=${encodeURIComponent(query.trim())}&limit=${limit}`;
+    
+    if (sort) {
+      ebayUrl += `&sort=${sort}`;
+    }
 
-    console.log('eBay search response status:', response.status);
+    // Build filter string with proper price ranges
+    const filters = [];
+    if (filter) {
+      filters.push(filter);
+    }
+
+    // Add price filters with proper format
+    if (minPrice !== undefined) {
+      filters.push(`price:[${minPrice}..]`);
+    }
+    if (maxPrice !== undefined) {
+      filters.push(`price:[..${maxPrice}]`);
+    }
+
+    // Add filter parameter if we have any filters
+    if (filters.length > 0) {
+      ebayUrl += `&filter=${filters.join(',')}`;
+    }
+
+    const response = await fetch(ebayUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+        'Content-Type': 'application/json'
+      }
+    });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('eBay search error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      throw new Error(`eBay API error: ${response.status} - ${errorText}`);
+      throw new Error(`eBay API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('eBay API response structure:', JSON.stringify(data, null, 2)); // Debug log
+    
+    // Double-check price filtering on the server side
+    if (data.itemSummaries) {
+      data.itemSummaries = data.itemSummaries.filter(item => {
+        const price = parseFloat(item.price?.value || 0);
+        if (minPrice !== undefined && price < parseFloat(minPrice)) return false;
+        if (maxPrice !== undefined && price > parseFloat(maxPrice)) return false;
+        return true;
+      });
+    }
+
     res.json(data);
   } catch (error) {
-    console.error('Error searching eBay:', error);
-    res.status(500).json({ 
-      error: error.message,
-      details: 'Check server logs for more information'
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  console.log('Environment variables check:');
-  console.log('EBAY_APP_ID:', process.env.EBAY_APP_ID ? 'Present' : 'Missing');
-  console.log('EBAY_CERT_ID:', process.env.EBAY_CERT_ID ? 'Present' : 'Missing');
-  console.log('EBAY_DEV_ID:', process.env.EBAY_DEV_ID ? 'Present' : 'Missing');
 }); 

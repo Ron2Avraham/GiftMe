@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -87,8 +87,17 @@ const GiftCalendar = () => {
     if (!currentUser) return;
 
     try {
+      console.log('Loading wishlist items for user:', currentUser.uid);
+      
       // Get the user's partner ID from their profile
-      const userDoc = await getDocs(doc(db, 'users', currentUser.uid));
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        console.log('User document not found');
+        return;
+      }
+
       const userData = userDoc.data();
       const partnerId = userData?.partnerId;
 
@@ -99,11 +108,16 @@ const GiftCalendar = () => {
 
       // Get partner's wishlist items
       const wishlistRef = collection(db, 'users', partnerId, 'wishlist');
-      const snapshot = await getDocs(wishlistRef);
-      const items = snapshot.docs.map(doc => ({
+      const wishlistSnapshot = await getDocs(wishlistRef);
+            
+      const items = wishlistSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        // Add a default image if none exists
+        image: doc.data().image || 'https://via.placeholder.com/150?text=No+Image'
       }));
+      
+      console.log('Processed wishlist items:', items);
       setWishlistItems(items);
     } catch (error) {
       console.error('Error loading wishlist items:', error);
@@ -113,6 +127,12 @@ const GiftCalendar = () => {
         message: 'Failed to load wishlist items'
       }]);
     }
+  };
+
+  // Add this new function to handle image errors
+  const handleImageError = (e) => {
+    e.target.onerror = null; // Prevent infinite loop
+    e.target.src = 'https://via.placeholder.com/150?text=No+Image';
   };
 
   const checkUpcomingEvents = () => {
@@ -466,9 +486,10 @@ const GiftCalendar = () => {
                           <h6>Linked Wishlist Item:</h6>
                           <div className="wishlist-item-preview">
                             <img 
-                              src={linkedItem.image} 
+                              src={linkedItem.image || 'https://via.placeholder.com/150?text=No+Image'}
                               alt={linkedItem.name}
                               className="wishlist-item-image"
+                              onError={handleImageError}
                             />
                             <div className="wishlist-item-details">
                               <p className="item-name">{linkedItem.name}</p>

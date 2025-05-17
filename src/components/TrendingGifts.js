@@ -11,35 +11,53 @@ const TrendingGifts = ({ onAddToWishlist, budgetRange }) => {
     const loadTrendingItems = async () => {
       setIsLoading(true);
       try {
-        console.log('Loading trending items with budget range:', budgetRange);
         const token = await getEbayToken();
         
-        // Search for trending gifts with high view count and sales
-        const results = await searchEbayItems('gift', token, {
+        // Search for trending gifts with high view count
+        const searchOptions = {
           sort: 'viewCount',
-          filter: 'soldItems',
-          limit: 12,
-          minPrice: budgetRange?.min,
-          maxPrice: budgetRange?.max
-        });
+          limit: 12
+        };
 
-        console.log('Raw eBay results:', results);
+        // Only add price filters if both min and max are defined
+        if (budgetRange?.min !== undefined && budgetRange?.max !== undefined) {
+          searchOptions.minPrice = budgetRange.min;
+          searchOptions.maxPrice = budgetRange.max;
+        }
 
-        // Filter results by price range as a backup
-        const filteredResults = results.filter(item => {
-          const price = parseFloat(item.price?.value);
-          if (!budgetRange) return true;
-          if (budgetRange.min !== undefined && price < budgetRange.min) return false;
-          if (budgetRange.max !== undefined && price > budgetRange.max) return false;
-          return true;
-        });
+        const results = await searchEbayItems('gift', token, searchOptions);
 
-        console.log('Filtered results:', filteredResults);
+        if (!results || results.length === 0) {
+          // Try again without sort parameter if no results
+          const fallbackResults = await searchEbayItems('gift', token, {
+            limit: 12,
+            minPrice: searchOptions.minPrice,
+            maxPrice: searchOptions.maxPrice
+          });
+          
+          if (fallbackResults && fallbackResults.length > 0) {
+            results = fallbackResults;
+          }
+        }
+
+        // Skip filtering entirely if no budget range is provided
+        let filteredResults = results;
+        if (budgetRange && (budgetRange.min !== undefined || budgetRange.max !== undefined)) {
+          filteredResults = results.filter(item => {
+            const price = parseFloat(item.price?.value);
+            if (isNaN(price)) return false;
+            
+            const meetsMinPrice = budgetRange.min === undefined || price >= budgetRange.min;
+            const meetsMaxPrice = budgetRange.max === undefined || price <= budgetRange.max;
+            
+            return meetsMinPrice && meetsMaxPrice;
+          });
+        }
 
         const formattedResults = filteredResults.map(item => ({
           id: item.itemId,
           name: item.title,
-          price: item.price.value,
+          price: item.price?.value || '0',
           description: item.shortDescription || item.title,
           images: [
             item.image?.imageUrl,
@@ -52,10 +70,10 @@ const TrendingGifts = ({ onAddToWishlist, budgetRange }) => {
           sales: item.soldQuantity || 0
         }));
 
-        console.log('Formatted results:', formattedResults);
         setTrendingItems(formattedResults);
       } catch (error) {
         console.error('Error loading trending items:', error);
+        setTrendingItems([]); // Clear items on error
       } finally {
         setIsLoading(false);
       }

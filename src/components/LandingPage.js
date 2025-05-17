@@ -7,6 +7,9 @@ import GiftExchange from './GiftExchange';
 import './LandingPage.scss';
 import giftExchange from '../assets/images/GiftExchange.png';
 import giftIcon from '../assets/images/Gift.png';
+import abstractAvatar from '../assets/images/AbstractAvatar.png';
+
+const DEFAULT_AVATAR = abstractAvatar;
 
 function LandingPage() {
   const { userId } = useParams();
@@ -133,9 +136,14 @@ function LandingPage() {
 
     const loadConnections = async () => {
       const currentUser = auth.currentUser;
-      if (!currentUser) return;
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
 
       try {
+        console.log('Loading connections for user:', currentUser.uid);
+        
         // Get all connections where the current user is involved
         const connectionsRef = collection(db, 'connections');
         const q = query(
@@ -144,17 +152,26 @@ function LandingPage() {
         );
         const querySnapshot = await getDocs(q);
         
+        console.log('Found connections:', querySnapshot.docs.length);
+        
         const friends = [];
-        for (const doc of querySnapshot.docs) {
-          const connectionData = doc.data();
+        for (const connectionDoc of querySnapshot.docs) {
+          const connectionData = connectionDoc.data();
+          console.log('Connection data:', connectionData);
+          
+          // Find the partner's ID (the other user in the connection)
           const partnerId = connectionData.users.find(id => id !== currentUser.uid);
+          console.log('Partner ID:', partnerId);
           
           if (partnerId) {
             const partnerDoc = await getDoc(doc(db, 'users', partnerId));
             if (partnerDoc.exists()) {
+              const partnerData = partnerDoc.data();
+              console.log('Partner data:', partnerData);
+              
               friends.push({
                 id: partnerId,
-                ...partnerDoc.data(),
+                ...partnerData,
                 connectionStatus: connectionData.status,
                 connectedAt: connectionData.createdAt
               });
@@ -162,29 +179,42 @@ function LandingPage() {
           }
         }
 
+        console.log('Processed friends:', friends);
         setConnectedFriends(friends);
 
         // Get wishlists for each friend
         const wishlists = {};
         for (const friend of friends) {
-          const wishlistRef = collection(db, 'users', friend.id, 'wishlist');
-          const wishlistSnapshot = await getDocs(wishlistRef);
-          wishlists[friend.id] = wishlistSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+          try {
+            console.log('Loading wishlist for friend:', friend.id);
+            const wishlistRef = collection(db, 'users', friend.id, 'wishlist');
+            const wishlistQuery = query(wishlistRef);
+            const wishlistSnapshot = await getDocs(wishlistQuery);
+            console.log('Wishlist items found:', wishlistSnapshot.docs.length);
+            
+            wishlists[friend.id] = wishlistSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            console.log('Processed wishlist items:', wishlists[friend.id]);
+          } catch (wishlistError) {
+            console.error('Error loading wishlist for friend:', friend.id, wishlistError);
+            wishlists[friend.id] = [];
+          }
         }
+        console.log('All wishlists loaded:', wishlists);
         setFriendWishlists(wishlists);
       } catch (err) {
         console.error('Error loading connections:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
     };
 
     if (userId) {
-      console.log('Starting connection process for user:', userId);
       connectUsers();
     } else {
-      setLoading(false);
       loadConnections();
     }
   }, [userId, navigate]);
@@ -212,6 +242,11 @@ function LandingPage() {
         console.error('Failed to copy link:', err);
       }
     }
+  };
+
+  const handleImageError = (e) => {
+    e.target.onerror = null; // Prevent infinite loop
+    e.target.src = DEFAULT_AVATAR;
   };
 
   if (loading) {
@@ -297,9 +332,10 @@ function LandingPage() {
                   <div key={friend.id} className="friend-card">
                     <div className="friend-header">
                       <img 
-                        src={friend.photoURL || 'https://via.placeholder.com/50'} 
+                        src={friend.photoURL || DEFAULT_AVATAR} 
                         alt={friend.displayName || 'Friend'} 
                         className="friend-avatar"
+                        onError={handleImageError}
                       />
                       <div className="friend-info">
                         <h4>{friend.displayName || 'Your Spouse'}</h4>
@@ -363,4 +399,4 @@ function LandingPage() {
   );
 }
 
-export default LandingPage; 
+export default LandingPage;

@@ -449,35 +449,43 @@ $transition: all 0.3s ease;
 
         .search-container {
           position: relative;
-          max-width: 600px;
-          margin: 0 auto 2rem;
+          width: 100%;
+          margin-bottom: 20px;
 
           .search-input {
             width: 100%;
-            padding: 1rem 1.5rem;
-            font-size: 1.1rem;
-            border: 2px solid $border-color;
-            border-radius: $border-radius-md;
-            transition: $transition;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
 
             &:focus {
+              border-color: #4a90e2;
               outline: none;
-              border-color: $primary-color;
-              box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+              box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
             }
           }
 
-          .search-spinner {
+          .search-loading {
             position: absolute;
-            right: 1rem;
+            right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            width: 20px;
-            height: 20px;
-            border: 2px solid $border-color;
-            border-top-color: $primary-color;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            font-size: 14px;
+
+            .loading-spinner {
+              width: 20px;
+              height: 20px;
+              border: 2px solid #f3f3f3;
+              border-top: 2px solid #4a90e2;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+            }
           }
         }
       }

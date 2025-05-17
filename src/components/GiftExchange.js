@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { searchProducts, getProductCategories } from '../api/products';
 import { searchExperiences, getExperienceCategories } from '../api/experiences';
@@ -30,33 +30,137 @@ function GiftExchange() {
   const [allResults, setAllResults] = useState([]); // Store all results from API
   const [wishlistPrivacy, setWishlistPrivacy] = useState('public');
 
-  const formatPrice = (price) => {
-    if (!price) return '';
-    // Remove any non-numeric characters except decimal point
-    const numPrice = parseFloat(price.replace(/[^0-9.-]+/g, ''));
-    if (isNaN(numPrice)) return '';
-    // Format with 2 decimal places and add dollar sign
-    return `$${numPrice.toFixed(2)}`;
-  };
-
-  const getBudgetCategory = (price) => {
-    const numPrice = parseFloat(price.replace(/[^0-9.-]+/g, ''));
-    if (isNaN(numPrice)) return null;
-    
-    if (numPrice < 50) return 'budget';
-    if (numPrice <= 150) return 'moderate';
-    if (numPrice <= 500) return 'premium';
-    return 'luxury';
-  };
-
-  const giftCategories = giftType === 'products' ? getProductCategories() : getExperienceCategories();
-
   const budgetCategories = [
     { id: 'budget', label: 'Budget-Friendly', range: 'Under $50', icon: '💰' },
     { id: 'moderate', label: 'Moderate', range: '$50 - $150', icon: '🎁' },
     { id: 'premium', label: 'Premium', range: '$150 - $500', icon: '✨' },
     { id: 'luxury', label: 'Luxury', range: 'Over $500', icon: '💎' }
   ];
+
+  // Initial search
+  useEffect(() => {
+    searchGifts('gift', 'all');
+  }, []);
+
+  // Debounced search function
+  const debouncedSearch = useCallback((query, category) => {
+    const timeoutId = setTimeout(() => {
+      searchGifts(query, category);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Handle search query changes with debouncing
+  useEffect(() => {
+    if (searchQuery !== undefined) {
+      debouncedSearch(searchQuery, selectedCategory);
+    }
+  }, [searchQuery, selectedCategory, debouncedSearch]);
+
+  const searchGifts = async (query, category) => {
+    setIsSearching(true);
+    try {
+      let results = [];
+      
+      if (giftType === 'products') {
+        const token = await getEbayToken();
+        const searchQuery = query.trim() || 'gift';
+
+        // Set strict price ranges based on budget
+        let minPrice, maxPrice;
+        switch (selectedBudget) {
+          case 'budget':
+            minPrice = 0;
+            maxPrice = 49.99;
+            break;
+          case 'moderate':
+            minPrice = 50;
+            maxPrice = 149.99;
+            break;
+          case 'premium':
+            minPrice = 150;
+            maxPrice = 499.99;
+            break;
+          case 'luxury':
+            minPrice = 500;
+            maxPrice = 1000;
+            break;
+          default:
+            // When no budget is selected, don't apply price filtering
+            minPrice = 0;
+            maxPrice = 1000;
+        }
+
+        const searchOptions = {
+          limit: 20,
+          sort: 'bestMatch',
+          filter: selectedBudget ? `buyingOptions:{buyItNow},conditions:{NEW|USED},price:[${minPrice}..${maxPrice}]` : 'buyingOptions:{buyItNow},conditions:{NEW|USED}'
+        };
+
+        const ebayResults = await searchEbayItems(searchQuery, token, searchOptions);
+        
+        if (ebayResults && ebayResults.length > 0) {
+          results = ebayResults
+            .filter(item => {
+              const price = parseFloat(item.price?.value || 0);
+              
+              // Only apply strict price filtering if a budget is selected
+              if (selectedBudget) {
+                if (selectedBudget === 'budget' && price >= 50) return false;
+                if (selectedBudget === 'moderate' && (price < 50 || price >= 150)) return false;
+                if (selectedBudget === 'premium' && (price < 150 || price >= 500)) return false;
+                if (selectedBudget === 'luxury' && price < 500) return false;
+              }
+
+              return true;
+            })
+            .map(item => ({
+              id: item.itemId,
+              name: item.title,
+              price: item.price?.value || '0',
+              description: item.shortDescription || item.title,
+              images: [
+                item.image?.imageUrl,
+                ...(item.additionalImages || []).map(img => img.imageUrl)
+              ].filter(Boolean),
+              shop: 'eBay',
+              category: category,
+              link: item.itemWebUrl
+            }));
+        }
+      } else {
+        results = await searchExperiences(query, category);
+      }
+
+      setAllResults(results);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Update category selection
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategory(categoryId);
+    searchGifts(searchQuery, categoryId);
+  };
+
+  // Update budget selection
+  const handleBudgetChange = (budgetId) => {
+    const newBudget = selectedBudget === budgetId ? null : budgetId;
+    setSelectedBudget(newBudget);
+    searchGifts(searchQuery, selectedCategory);
+  };
+
+  // Update gift type
+  const handleGiftTypeChange = (type) => {
+    setGiftType(type);
+    searchGifts(searchQuery, selectedCategory);
+  };
 
   useEffect(() => {
     const loadExperienceCategories = async () => {
@@ -65,91 +169,6 @@ function GiftExchange() {
     };
     loadExperienceCategories();
   }, []);
-
-  useEffect(() => {
-    searchGifts('', 'all');
-  }, [giftType]);
-
-  useEffect(() => {
-    console.log('Current gift type:', giftType);
-    console.log('Current search results:', searchResults);
-  }, [giftType, searchResults]);
-
-  const searchGifts = async (query, category) => {
-    console.log('Searching gifts with query:', query, 'category:', category, 'type:', giftType);
-    setIsSearching(true);
-    try {
-      let results = [];
-      
-      if (giftType === 'products') {
-        // Get eBay token
-        const token = await getEbayToken();
-        // Search eBay
-        const ebayResults = await searchEbayItems(query || 'gift', token);
-        // Transform eBay results to match our format
-        results = ebayResults.map(item => ({
-          id: item.itemId,
-          name: item.title,
-          price: item.price.value,
-          description: item.shortDescription || item.title,
-          images: [
-            item.image?.imageUrl,
-            ...(item.additionalImages || []).map(img => img.imageUrl)
-          ].filter(Boolean),
-          shop: 'eBay',
-          category: category,
-          link: item.itemWebUrl
-        }));
-      } else {
-        results = await searchExperiences(query, category);
-      }
-
-      // Store all results
-      setAllResults(results);
-      // Apply current filters
-      applyFilters(results, category, selectedBudget);
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const applyFilters = (results, category, budget) => {
-    let filteredResults = [...results];
-
-    // Apply category filter
-    if (category && category !== 'all') {
-      filteredResults = filteredResults.filter(item => item.category === category);
-    }
-
-    // Apply budget filter
-    if (budget) {
-      filteredResults = filteredResults.filter(item => {
-        const price = parseFloat(item.price);
-        if (budget === 'budget') return price < 50;
-        if (budget === 'moderate') return price >= 50 && price <= 150;
-        if (budget === 'premium') return price > 150 && price <= 500;
-        if (budget === 'luxury') return price > 500;
-        return true;
-      });
-    }
-
-    setSearchResults(filteredResults);
-  };
-
-  // Update category selection
-  const handleCategoryChange = (categoryId) => {
-    setSelectedCategory(categoryId);
-    applyFilters(allResults, categoryId, selectedBudget);
-  };
-
-  // Update budget selection
-  const handleBudgetChange = (budgetId) => {
-    const newBudget = selectedBudget === budgetId ? null : budgetId;
-    setSelectedBudget(newBudget);
-    applyFilters(allResults, selectedCategory, newBudget);
-  };
 
   useEffect(() => {
     const loadWishlist = async () => {
@@ -177,18 +196,32 @@ function GiftExchange() {
       if (!currentUser) return;
 
       try {
-        const connectionsRef = collection(db, 'users', currentUser.uid, 'connections');
-        const querySnapshot = await getDocs(connectionsRef);
+        // Get all connections where the current user is involved
+        const connectionsRef = collection(db, 'connections');
+        const q = query(
+          connectionsRef,
+          where('users', 'array-contains', currentUser.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        
         const friends = [];
-
-        for (const doc of querySnapshot.docs) {
-          const friendId = doc.id;
-          const friendData = await getDoc(doc(db, 'users', friendId));
-          if (friendData.exists()) {
-            friends.push({
-              id: friendId,
-              ...friendData.data()
-            });
+        for (const connectionDoc of querySnapshot.docs) {
+          const connectionData = connectionDoc.data();
+          
+          // Find the partner's ID (the other user in the connection)
+          const partnerId = connectionData.users.find(id => id !== currentUser.uid);
+          
+          if (partnerId) {
+            const partnerDoc = await getDoc(doc(db, 'users', partnerId));
+            if (partnerDoc.exists()) {
+              const partnerData = partnerDoc.data();
+              friends.push({
+                id: partnerId,
+                ...partnerData,
+                connectionStatus: connectionData.status,
+                connectedAt: connectionData.createdAt
+              });
+            }
           }
         }
 
@@ -197,12 +230,19 @@ function GiftExchange() {
         // Get wishlists for each friend
         const wishlists = {};
         for (const friend of friends) {
-          const wishlistRef = collection(db, 'users', friend.id, 'wishlist');
-          const wishlistSnapshot = await getDocs(wishlistRef);
-          wishlists[friend.id] = wishlistSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+          try {
+            const wishlistRef = collection(db, 'users', friend.id, 'wishlist');
+            const wishlistQuery = query(wishlistRef);
+            const wishlistSnapshot = await getDocs(wishlistQuery);
+            
+            wishlists[friend.id] = wishlistSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+          } catch (wishlistError) {
+            console.error('Error loading wishlist for friend:', friend.id, wishlistError);
+            wishlists[friend.id] = [];
+          }
         }
         setFriendWishlists(wishlists);
       } catch (err) {
@@ -334,10 +374,173 @@ function GiftExchange() {
       </div>
 
       <div className="tab-content">
-        {activeTab === 'wishlist' && <Wishlist />}
+        {activeTab === 'wishlist' && (
+          <div className="wishlist-section">
+            <WishlistPrivacy 
+              onSave={handlePrivacySave}
+              initialSettings={wishlistPrivacy}
+            />
+
+            <div className="exchange-options">
+              <div className="budget-categories">
+                <h3>Select a Budget Range</h3>
+                <div className="category-grid">
+                  {budgetCategories.map((category) => (
+                    <div
+                      key={category.id}
+                      className={`category-card ${selectedBudget === category.id ? 'selected' : ''}`}
+                      onClick={() => handleBudgetChange(category.id)}
+                    >
+                      <div className="category-icon">{category.icon}</div>
+                      <h4>{category.label}</h4>
+                      <p className="budget-range">{category.range}</p>
+                    </div>
+                  ))}
+                </div>
+                {selectedBudget && (
+                  <button 
+                    className="clear-budget-btn"
+                    onClick={() => handleBudgetChange(selectedBudget)}
+                  >
+                    Clear Budget Filter
+                  </button>
+                )}
+              </div>
+
+              <div className="gift-type-selector">
+                <button
+                  className={`gift-type-btn ${giftType === 'products' ? 'active' : ''}`}
+                  onClick={() => handleGiftTypeChange('products')}
+                >
+                  🎁 Products
+                </button>
+                <button
+                  className={`gift-type-btn ${giftType === 'experiences' ? 'active' : ''}`}
+                  onClick={() => handleGiftTypeChange('experiences')}
+                >
+                  ✨ Experiences
+                </button>
+              </div>
+            </div>
+
+            <TrendingGifts 
+              onAddToWishlist={handleAddToWishlist}
+              budgetRange={selectedBudget ? {
+                min: selectedBudget === 'budget' ? 0 : 
+                     selectedBudget === 'moderate' ? 50 :
+                     selectedBudget === 'premium' ? 150 : 500,
+                max: selectedBudget === 'budget' ? 50 :
+                     selectedBudget === 'moderate' ? 150 :
+                     selectedBudget === 'premium' ? 500 : 1000
+              } : undefined}
+            />
+
+            <SeasonalGuides 
+              onAddToWishlist={handleAddToWishlist}
+              budgetRange={selectedBudget ? {
+                min: selectedBudget === 'budget' ? 0 : 
+                     selectedBudget === 'moderate' ? 50 :
+                     selectedBudget === 'premium' ? 150 : 500,
+                max: selectedBudget === 'budget' ? 50 :
+                     selectedBudget === 'moderate' ? 150 :
+                     selectedBudget === 'premium' ? 500 : 1000
+              } : undefined}
+            />
+
+            <div className="gift-search-section">
+              <div className="search-container">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={`Search for ${giftType}...`}
+                  className="search-input"
+                />
+                {isSearching && (
+                  <div className="search-loading">
+                    <div className="loading-spinner"></div>
+                    <span>Searching...</span>
+                  </div>
+                )}
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="search-results">
+                  {searchResults.map(item => (
+                    <div key={item.id} className="gift-card">
+                      <ProductImageGallery 
+                        images={item.images || [item.image]} 
+                        alt={item.name}
+                      />
+                      <div className="gift-details">
+                        <h3>{item.name}</h3>
+                        <p className="price">
+                          {giftType === 'products' 
+                            ? (typeof item.price === 'number' 
+                              ? `$${item.price.toFixed(2)}`
+                              : `$${parseFloat(item.price).toFixed(2)}`)
+                            : item.price}
+                        </p>
+                        <p className="description">{item.description}</p>
+                        {giftType === 'products' && (
+                          <>
+                            <p className="shop">Shop: {item.shop}</p>
+                            {item.materials && item.materials.length > 0 && (
+                              <p className="materials">Materials: {item.materials.join(', ')}</p>
+                            )}
+                            {item.shipping && (
+                              <p className="shipping">Shipping: ${item.shipping.price.toFixed(2)}</p>
+                            )}
+                          </>
+                        )}
+                        <button 
+                          className="add-to-wishlist-btn"
+                          onClick={() => handleAddToWishlist(item)}
+                        >
+                          Add to Wishlist
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="wishlist-items">
+              <h3>My Wishlist Items</h3>
+              {wishlist.map(item => (
+                <div key={item.id} className="gift-card">
+                  <ProductImageGallery 
+                    images={item.images || [item.image]} 
+                    alt={item.name}
+                  />
+                  <div className="gift-details">
+                    <h3>{item.name}</h3>
+                    <p className="price">{item.price}</p>
+                    <p className="description">{item.description}</p>
+                    <div className="gift-actions">
+                      <button 
+                        className="edit-btn"
+                        onClick={() => setEditingItem(item)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteItem(item.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default GiftExchange; 
+export default GiftExchange;
