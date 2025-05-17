@@ -90,12 +90,21 @@ export const searchEbayItems = async (query, token, options = {}) => {
 
     const data = await response.json();
     
-    // Convert all image URLs to HTTPS
+    // Process items and ensure HTTPS image URLs
     if (data.itemSummaries) {
-      data.itemSummaries = data.itemSummaries.map(item => ({
-        ...item,
-        image: item.image?.imageUrl?.replace('http://', 'https://') || item.image?.url?.replace('http://', 'https://')
-      }));
+      data.itemSummaries = data.itemSummaries.map(item => {
+        let imageUrl = item.image?.imageUrl || item.image?.url;
+        
+        // Use a reliable placeholder if no image
+        if (!imageUrl) {
+          imageUrl = 'https://placehold.co/300x300/e2e8f0/1e293b?text=No+Image';
+        }
+        
+        return {
+          ...item,
+          image: imageUrl
+        };
+      });
     }
     
     return data.itemSummaries || [];
