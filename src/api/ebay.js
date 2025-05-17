@@ -89,6 +89,15 @@ export const searchEbayItems = async (query, token, options = {}) => {
     }
 
     const data = await response.json();
+    
+    // Convert all image URLs to HTTPS
+    if (data.itemSummaries) {
+      data.itemSummaries = data.itemSummaries.map(item => ({
+        ...item,
+        image: item.image?.imageUrl?.replace('http://', 'https://') || item.image?.url?.replace('http://', 'https://')
+      }));
+    }
+    
     return data.itemSummaries || [];
   } catch (error) {
     return [];

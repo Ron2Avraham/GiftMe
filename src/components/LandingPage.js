@@ -254,7 +254,6 @@ function LandingPage() {
       <div className="landing-page">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Connecting users...</p>
         </div>
       </div>
     );
