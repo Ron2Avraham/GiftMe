@@ -3,8 +3,8 @@ const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
 const EBAY_DEV_ID = process.env.EBAY_DEV_ID;
 
 // Use the correct API URL based on the environment
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/api/ebay'  // In production, use relative path
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://' + window.location.host + '/api/ebay'  // In production, use current domain
   : 'http://localhost:5000/api/ebay';  // In development, use local server
 
 // Cache for the eBay token with longer expiration buffer

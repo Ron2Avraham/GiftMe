@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://' + window.location.host + '/api/etsy'  // In production, use current domain
+  : 'http://localhost:3001/api';  // In development, use local server
 
 export const searchEtsyProducts = async (query, category) => {
   try {
