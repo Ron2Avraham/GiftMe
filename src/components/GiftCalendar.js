@@ -5,6 +5,8 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './GiftCalendar.scss';
 
+const PLACEHOLDER_IMAGE = 'https://placehold.co/300x300/e2e8f0/1e293b?text=No+Image';
+
 const GiftCalendar = () => {
   const [events, setEvents] = useState([]);
   const [isAddingEvent, setIsAddingEvent] = useState(false);
@@ -114,7 +116,7 @@ const GiftCalendar = () => {
         id: doc.id,
         ...doc.data(),
         // Add a default image if none exists
-        image: doc.data().image || 'https://via.placeholder.com/150?text=No+Image'
+        image: doc.data().image || PLACEHOLDER_IMAGE
       }));
       
       console.log('Processed wishlist items:', items);
@@ -132,7 +134,7 @@ const GiftCalendar = () => {
   // Add this new function to handle image errors
   const handleImageError = (e) => {
     e.target.onerror = null; // Prevent infinite loop
-    e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+    e.target.src = PLACEHOLDER_IMAGE;
   };
 
   const checkUpcomingEvents = () => {
@@ -486,7 +488,7 @@ const GiftCalendar = () => {
                           <h6>Linked Wishlist Item:</h6>
                           <div className="wishlist-item-preview">
                             <img 
-                              src={linkedItem.image || 'https://via.placeholder.com/150?text=No+Image'}
+                              src={linkedItem.image || PLACEHOLDER_IMAGE}
                               alt={linkedItem.name}
                               className="wishlist-item-image"
                               onError={handleImageError}
